@@ -23,12 +23,18 @@ const SALT_ROUNDS = 10;
 // Takes req.body of {username, password} and creates a new user with the hashed password
 app.post('/register',  
   //Validator functions to check if username field in body is empty, or password too short
-  body('username').not().isEmpty().withMessage('username field is empty'),
+  body('username').not().isEmpty().withMessage('username field is empty').custom(value => {
+    return User.findOne({where:{username:value}}).then(user => {
+      if (user) { //this custom validator ensures the username is unique!
+        return Promise.reject('User already exists');
+      }
+    });
+  }),
   body('password').isLength({ min: 6 }).withMessage('password field must be at least 6 characters'),
   
   async (req, res, next) => {
     
-    //Handling errors if validation didnt pass 
+    //Handling errors if validation didn't pass 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).send(errors);  
@@ -97,7 +103,7 @@ app.post('/me',
   
   async (req, res, next) => {
     
-    //Handling errors if validation didnt pass 
+    //Handling errors if validation didn't pass 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).send(errors);  

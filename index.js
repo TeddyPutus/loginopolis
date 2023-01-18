@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const { User } = require('./db');
+const { User, Post } = require('./db');
 const bcrypt = require('bcrypt');
 const {body, checkBody, param, validationResult} = require('express-validator');
 
@@ -65,17 +65,17 @@ app.post('/login',
     } else{
       try { 
         //find the user by username
-        const newUser = await User.findOne({ where:
+        const foundUser = await User.findOne({ where:
           {username : req.body.username}
        })
-       if(newUser){ 
+       if(foundUser){ 
           //if the user is found, then compare the given password to the hashed password in the database
-          const isMatch = await bcrypt.compare(req.body.password, newUser.password);
+          const isMatch = await bcrypt.compare(req.body.password, foundUser.password);
           if(isMatch){ 
             //if it's a password match, login was successful
-            return res.send(`successfully logged in user ${newUser.username}`);
+            return res.send(`successfully logged in user ${foundUser.username}`);
           }else{ 
-            //otherwise passworde is incorrect
+            //otherwise password is incorrect
             return res.status(401).send('incorrect username or password');
           }
        }else{ 
@@ -89,6 +89,47 @@ app.post('/login',
   })
 
 // GET "/me" - authenticate the user, then return associated data!
+// // Takes req.body of {username, password}, finds user by username, and compares the password with the hashed version from the DB
+app.post('/me',  
+  //Validator functions to check if username field in body is empty, or password too short
+  body('username').not().isEmpty().withMessage('username field is Empty'),
+  body('password').isLength({ min: 6 }).withMessage('password field must be at least 6 characters'),
+  
+  async (req, res, next) => {
+    
+    //Handling errors if validation didnt pass 
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).send(errors);  
+    //If no errors, create new post
+    } else{
+      try { 
+        //find the user by username
+        const foundUser = await User.findOne({ where:
+          {username : req.body.username}
+       });
+       if(foundUser){ 
+          //if the user is found, then compare the given password to the hashed password in the database
+          const isMatch = await bcrypt.compare(req.body.password, foundUser.password);
+          if(isMatch){ 
+            //Get all posts associated with user and return them
+            const foundPosts = await Post.findAll({
+              where: {userId: foundUser.id}
+            });
+            res.send(foundPosts);
+          }else{ 
+            //otherwise password is incorrect
+            return res.status(401).send('incorrect username or password');
+          }
+       }else{ 
+        //if no username found, username is incorrect
+        return res.status(401).send('incorrect username or password');
+       }       
+      } catch (error) {
+        return res.send(400);
+      }       
+    }
+  })
 
 // we export the app, not listening in here, so that we can run tests
 module.exports = app;

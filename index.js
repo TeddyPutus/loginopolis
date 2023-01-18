@@ -88,5 +88,7 @@ app.post('/login',
     }
   })
 
+// GET "/me" - authenticate the user, then return associated data!
+
 // we export the app, not listening in here, so that we can run tests
 module.exports = app;
